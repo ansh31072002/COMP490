@@ -48,6 +48,11 @@ dependencies:
   qr_flutter: ^4.1.0           # For QR codes (MFA setup)
   google_sign_in: ^6.1.6        # For OAuth 2.0 Google Sign-In
   
+  # MFA notification packages
+  mailer: ^6.1.0                # For sending emails
+  url_launcher: ^6.2.2          # For opening email/SMS apps
+  http: ^1.1.0                  # For HTTP requests (SMS APIs)
+  
   # Basic state management
   provider: ^6.1.1
 

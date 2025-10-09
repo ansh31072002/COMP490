@@ -5,6 +5,7 @@ import 'chat_screen.dart';
 import 'admin_panel_screen.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
+import '../services/mfa_session_service.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -532,7 +533,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _signOut() async {
+    // Clear MFA session when user explicitly logs out
+    await MFASessionService.clearMFASession();
+    
+    // Sign out from Firebase
     await _authService.signOut();
+    
+    // Navigate to login screen
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => LoginScreen()),
       (route) => false,

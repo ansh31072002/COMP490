@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/encryption_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -197,11 +198,26 @@ class _ChatScreenState extends State<ChatScreen> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   if (!isCurrentUser) SizedBox(height: 4),
-                  Text(
-                    _getDisplayMessage(message['message']),
-                    style: TextStyle(
-                      color: isCurrentUser ? Colors.white : Colors.black,
-                    ),
+                  FutureBuilder<String>(
+                    future: _getDecryptedMessage(message['message'], message['isEncrypted'] ?? false),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Text(
+                          'Decrypting...',
+                          style: TextStyle(
+                            color: isCurrentUser ? Colors.white70 : Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        );
+                      }
+                      
+                      return Text(
+                        snapshot.data ?? message['message'],
+                        style: TextStyle(
+                          color: isCurrentUser ? Colors.white : Colors.black,
+                        ),
+                      );
+                    },
                   ),
                   SizedBox(height: 4),
                   Text(
@@ -229,8 +245,29 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _getDisplayMessage(String message) {
-    // Show message as-is (no encryption)
+    // For now, show message as-is since we need async for decryption
+    // This will be handled in the message bubble widget
     return message;
+  }
+  
+  Future<String> _getDecryptedMessage(String message, bool isEncrypted) async {
+    try {
+      if (!isEncrypted) {
+        return message; // Message is not encrypted, return as-is
+      }
+      
+      // Get the shared encryption key for this chat
+      final sharedKey = await EncryptionService.getUserKey('${widget.chatId}_shared');
+      if (sharedKey == null) {
+        return '[Unable to decrypt - No key available]';
+      }
+      
+      // Try to decrypt the message
+      return EncryptionService.decryptMessage(message, sharedKey);
+    } catch (e) {
+      print('Decryption error: $e');
+      return '[Decryption failed]';
+    }
   }
 
   void _sendMessage() async {
@@ -240,24 +277,37 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
 
     try {
+      // Get or create shared encryption key for this chat
+      String? sharedKey = await EncryptionService.getUserKey('${widget.chatId}_shared');
+      if (sharedKey == null) {
+        // Generate a new shared key for this chat
+        sharedKey = EncryptionService.generateRandomKey();
+        await EncryptionService.storeUserKey('${widget.chatId}_shared', sharedKey);
+      }
+      
+      // Encrypt the message using AES-256
+      final encryptedMessage = EncryptionService.encryptMessage(message, sharedKey);
+      
       await _firestore
           .collection('chats')
           .doc(widget.chatId)
           .collection('messages')
           .add({
-        'message': message,
+        'message': encryptedMessage,
         'senderId': _auth.currentUser?.uid,
         'senderName': _auth.currentUser?.displayName ?? 'You',
         'timestamp': FieldValue.serverTimestamp(),
         'readBy': [_auth.currentUser?.uid],
         'isRead': true,
+        'isEncrypted': true, // Flag to indicate this message is encrypted
       });
 
       await _firestore.collection('chats').doc(widget.chatId).update({
-        'lastMessage': message,
+        'lastMessage': '[Encrypted Message]', // Don't show actual content
         'lastMessageTime': FieldValue.serverTimestamp(),
       });
     } catch (e) {
+      print('Error sending encrypted message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to send message'),
