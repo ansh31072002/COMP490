@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/mfa_session_service.dart';
 import 'services/mfa_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +24,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SECURELY',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: AuthWrapper(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
