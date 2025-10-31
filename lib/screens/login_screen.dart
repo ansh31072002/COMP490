@@ -33,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Row(
           children: [
@@ -75,6 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [AppTheme.lightGray, Colors.white],
@@ -82,13 +85,14 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 // --------------------------
                 // LOGIN / REGISTER SECTION
                 // --------------------------
@@ -141,7 +145,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text('Skip 2FA (for testing)'),
                   ),
                 ],
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -241,6 +246,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildNameField() => _decoratedField(
         TextFormField(
           controller: _nameController,
+          style: TextStyle(
+            color: AppTheme.darkSlate,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: _inputDecoration('Full Name'),
           validator: (v) =>
               v == null || v.isEmpty ? 'Please enter your name' : null,
@@ -250,6 +260,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPhoneField() => _decoratedField(
         TextFormField(
           controller: _phoneController,
+          style: TextStyle(
+            color: AppTheme.darkSlate,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: _inputDecoration('Phone Number').copyWith(
             hintText: '+1234567890',
           ),
@@ -274,6 +289,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildEmailField() => _decoratedField(
         TextFormField(
           controller: _emailController,
+          style: TextStyle(
+            color: AppTheme.darkSlate,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: _inputDecoration('Email'),
           validator: (v) =>
               v == null || v.isEmpty ? 'Please enter your email' : null,
@@ -284,6 +304,11 @@ class _LoginScreenState extends State<LoginScreen> {
         TextFormField(
           controller: _passwordController,
           obscureText: true,
+          style: TextStyle(
+            color: AppTheme.darkSlate,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: _inputDecoration('Password'),
           validator: (v) {
             if (v == null || v.isEmpty) return 'Please enter your password';

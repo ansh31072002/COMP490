@@ -159,17 +159,18 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: AppTheme.warmGradient,
+                gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.accentOrange.withOpacity(0.3),
+                    color: AppTheme.primaryBlue.withOpacity(0.3),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -200,28 +201,35 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ),
         ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.lightGray, Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
                     // Group details
                     Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white, AppTheme.lightGray],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
                             color: AppTheme.primaryBlue.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: Offset(0, 8),
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
                           ),
                         ],
                       ),
@@ -231,8 +239,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           labelText: 'Group Name',
                           labelStyle: TextStyle(color: AppTheme.primaryBlue),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: AppTheme.primaryBlue, width: 2),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
@@ -249,17 +261,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     SizedBox(height: 20),
                     Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white, AppTheme.lightGray],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
                             color: AppTheme.primaryBlue.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: Offset(0, 8),
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
                           ),
                         ],
                       ),
@@ -269,8 +277,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           labelText: 'Description (optional)',
                           labelStyle: TextStyle(color: AppTheme.primaryBlue),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: AppTheme.primaryBlue, width: 2),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
@@ -285,7 +297,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     if (_selectedMembers.isNotEmpty) ...[
                       Text(
                         'Selected Members (${_selectedMembers.length})',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.darkSlate,
+                        ),
                       ),
                       SizedBox(height: 8),
                       Container(
@@ -297,10 +313,25 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             final member = _selectedMembers[index];
                             return Container(
                               margin: EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryGradient,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryBlue.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
                               child: Chip(
-                                label: Text(member['name']),
+                                label: Text(
+                                  member['name'],
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
                                 onDeleted: () => _toggleUserSelection(member),
-                                deleteIcon: Icon(Icons.close, size: 18),
+                                deleteIcon: Icon(Icons.close, size: 18, color: Colors.white),
+                                backgroundColor: Colors.transparent,
                               ),
                             );
                           },
@@ -310,14 +341,46 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     ],
                     
                     // Search users
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'Search users',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
                       ),
-                      onChanged: _searchUsers,
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: 'Search users',
+                          labelStyle: TextStyle(color: AppTheme.primaryBlue),
+                          prefixIcon: Container(
+                            margin: EdgeInsets.all(8),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.search, color: Colors.white, size: 18),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: AppTheme.primaryBlue, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onChanged: _searchUsers,
+                      ),
                     ),
                     SizedBox(height: 16),
                     
@@ -329,16 +392,76 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           final user = _searchResults[index];
                           final isSelected = _selectedMembers.any((m) => m['uid'] == user['uid']);
                           
-                          return ListTile(
-                            leading: CircleAvatar(
-                              child: Text(user['name'][0].toUpperCase()),
+                          return Container(
+                            margin: EdgeInsets.symmetric(horizontal: 0, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected 
+                                    ? AppTheme.primaryBlue.withOpacity(0.3)
+                                    : AppTheme.primaryBlue.withOpacity(0.1),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryBlue.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            title: Text(user['name']),
-                            subtitle: Text(user['email']),
-                            trailing: isSelected
-                                ? Icon(Icons.check_circle, color: Colors.green)
-                                : Icon(Icons.radio_button_unchecked),
-                            onTap: () => _toggleUserSelection(user),
+                            child: ListTile(
+                              leading: Container(
+                                decoration: BoxDecoration(
+                                  gradient: AppTheme.primaryGradient,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.primaryBlue.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  backgroundColor: Colors.transparent,
+                                  child: Text(
+                                    user['name'][0].toUpperCase(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                user['name'],
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.darkSlate,
+                                ),
+                              ),
+                              subtitle: Text(
+                                user['email'],
+                                style: TextStyle(color: AppTheme.mediumGray),
+                              ),
+                              trailing: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  gradient: isSelected ? AppTheme.accentGradient : null,
+                                  color: isSelected ? null : AppTheme.lightGray,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  color: isSelected ? Colors.white : AppTheme.mediumGray,
+                                  size: 24,
+                                ),
+                              ),
+                              onTap: () => _toggleUserSelection(user),
+                            ),
                           );
                         },
                       ),
@@ -408,10 +531,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               ),
                       ),
                     ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-    );
+      );
   }
 }

@@ -280,6 +280,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       child: TextField(
                         controller: _messageController,
+                        style: TextStyle(
+                          color: AppTheme.darkSlate,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Type your message...',
                           hintStyle: TextStyle(color: AppTheme.mediumGray),
@@ -348,7 +353,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 radius: 16,
                 backgroundColor: Colors.transparent,
                 child: Text(
-                  widget.otherUser['name'][0].toUpperCase(),
+                  (message['senderName'] ?? widget.otherUser['name'])[0].toUpperCase(),
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -387,7 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: Colors.white70,
+                        color: AppTheme.darkSlate,
                       ),
                     ),
                   if (!isCurrentUser) SizedBox(height: 4),
@@ -398,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         return Text(
                           'Decrypting...',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: AppTheme.darkSlate,
                             fontStyle: FontStyle.italic,
                           ),
                         );
@@ -407,8 +412,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       return Text(
                         snapshot.data ?? message['message'],
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.darkSlate,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       );
                     },
@@ -418,7 +424,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     _formatTime(message['timestamp']),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.white70,
+                      color: AppTheme.mediumGray,
                     ),
                   ),
                 ],
@@ -470,17 +476,18 @@ class _ChatScreenState extends State<ChatScreen> {
         return message; // Message is not encrypted, return as-is
       }
       
-      // Get the shared encryption key for this chat
-      final sharedKey = await EncryptionService.getUserKey('${widget.chatId}_shared');
-      if (sharedKey == null) {
-        return '[Unable to decrypt - No key available]';
+      // Try fallback decryption first
+      final result = await EncryptionService.decryptWithFallback(message, widget.chatId);
+      
+      // If fallback failed and it's still encrypted, handle as legacy message
+      if (result.contains('[Encrypted message - key not available]')) {
+        return EncryptionService.handleLegacyMessage(message, isEncrypted);
       }
       
-      // Try to decrypt the message
-      return EncryptionService.decryptMessage(message, sharedKey);
+      return result;
     } catch (e) {
       print('Decryption error: $e');
-      return '[Decryption failed]';
+      return EncryptionService.handleLegacyMessage(message, isEncrypted);
     }
   }
 
@@ -492,12 +499,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       // Get or create shared encryption key for this chat
-      String? sharedKey = await EncryptionService.getUserKey('${widget.chatId}_shared');
-      if (sharedKey == null) {
-        // Generate a new shared key for this chat
-        sharedKey = EncryptionService.generateRandomKey();
-        await EncryptionService.storeUserKey('${widget.chatId}_shared', sharedKey);
-      }
+      final sharedKey = await EncryptionService.getOrCreateSharedKey(widget.chatId);
+      
+      // Get participant IDs for this chat (you might need to implement this based on your chat structure)
+      final participantIds = [widget.chatId]; // This should be the actual participant IDs
+      
+      // Store the shared key in Firebase for persistence
+      await EncryptionService.storeSharedKey(widget.chatId, sharedKey, participantIds);
       
       // Encrypt the message using AES-256
       final encryptedMessage = EncryptionService.encryptMessage(message, sharedKey);
@@ -509,7 +517,7 @@ class _ChatScreenState extends State<ChatScreen> {
           .add({
         'message': encryptedMessage,
         'senderId': _auth.currentUser?.uid,
-        'senderName': _auth.currentUser?.displayName ?? 'You',
+        'senderName': _auth.currentUser?.displayName ?? _auth.currentUser?.email?.split('@')[0] ?? 'You',
         'timestamp': FieldValue.serverTimestamp(),
         'readBy': [_auth.currentUser?.uid],
         'isRead': true,

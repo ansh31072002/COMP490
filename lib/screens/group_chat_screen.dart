@@ -68,16 +68,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         return message;
       }
       
-      // Get the shared encryption key for this group
-      final sharedKey = await EncryptionService.getUserKey('${widget.groupId}_shared');
-      if (sharedKey == null) {
-        return '[Unable to decrypt - No key available]';
+      // Try fallback decryption first
+      final result = await EncryptionService.decryptWithFallback(message, widget.groupId);
+      
+      // If fallback failed and it's still encrypted, handle as legacy message
+      if (result.contains('[Encrypted message - key not available]')) {
+        return EncryptionService.handleLegacyMessage(message, isEncrypted);
       }
       
-      return EncryptionService.decryptMessage(message, sharedKey);
+      return result;
     } catch (e) {
       print('Decryption error: $e');
-      return '[Decryption failed]';
+      return EncryptionService.handleLegacyMessage(message, isEncrypted);
     }
   }
 
@@ -89,12 +91,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     try {
       // Get or create shared encryption key for this group
-      String? sharedKey = await EncryptionService.getUserKey('${widget.groupId}_shared');
-      if (sharedKey == null) {
-        // Generate a new shared key for this group
-        sharedKey = EncryptionService.generateRandomKey();
-        await EncryptionService.storeUserKey('${widget.groupId}_shared', sharedKey);
-      }
+      final sharedKey = await EncryptionService.getOrCreateSharedKey(widget.groupId);
+      
+      // Get participant IDs for this group (you might need to implement this based on your group structure)
+      final participantIds = [widget.groupId]; // This should be the actual participant IDs
+      
+      // Store the shared key in Firebase for persistence
+      await EncryptionService.storeSharedKey(widget.groupId, sharedKey, participantIds);
       
       // Encrypt the message using AES-256
       final encryptedMessage = EncryptionService.encryptMessage(message, sharedKey);
@@ -106,7 +109,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           .add({
         'message': encryptedMessage,
         'senderId': _auth.currentUser?.uid,
-        'senderName': _auth.currentUser?.displayName ?? 'You',
+        'senderName': _auth.currentUser?.displayName ?? _auth.currentUser?.email?.split('@')[0] ?? 'You',
         'timestamp': FieldValue.serverTimestamp(),
         'readBy': [_auth.currentUser?.uid],
         'isRead': true,

@@ -202,11 +202,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Icon(Icons.search, color: Colors.white, size: 18),
                     ),
+                    suffixIcon: _isSearching ? IconButton(
+                      icon: Icon(Icons.clear, color: AppTheme.mediumGray),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _isSearching = false;
+                          _searchResults = [];
+                        });
+                      },
+                    ) : null,
                     filled: true,
                     fillColor: Colors.transparent,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: _searchUsers,
+                  onSubmitted: (value) {
+                    if (value.trim().isEmpty) {
+                      _searchController.clear();
+                    }
+                  },
                 ),
               ),
             ),
@@ -397,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: CircleAvatar(
                       backgroundColor: Colors.transparent,
                       child: Text(
-                        user['name'][0].toUpperCase(),
+                        (user['name'] ?? user['email']?.split('@')[0] ?? 'U')[0].toUpperCase(),
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -407,7 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   title: Text(
-                    user['name'],
+                    user['name'] ?? user['email']?.split('@')[0] ?? 'Unknown User',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppTheme.darkSlate,
@@ -460,7 +475,13 @@ class _HomeScreenState extends State<HomeScreen> {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-            final chats = snapshot.data?.docs.toList() ?? [];
+            final allChats = snapshot.data?.docs.toList() ?? [];
+            
+            // Filter out group chats - only show individual chats
+            final chats = allChats.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return data['type'] != 'group';
+            }).toList();
 
             // Sort locally by lastMessageTime desc to avoid server-side index requirement
             chats.sort((a, b) {
@@ -491,11 +512,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
       Widget _buildChatTile(Map<String, dynamic> chat, String chatId) {
         final String? otherUserId = chat['otherUserId'];
-        if (otherUserId == null || otherUserId.isEmpty) {
+        
+        // Calculate the correct otherUserId from participants
+        final participants = List<String>.from(chat['participants'] ?? []);
+        final currentUserId = _auth.currentUser?.uid;
+        final correctOtherUserId = participants.firstWhere(
+          (id) => id != currentUserId,
+          orElse: () => otherUserId ?? '',
+        );
+        
+        // Update the chat document with the correct otherUserId if it's wrong
+        if (correctOtherUserId != otherUserId && correctOtherUserId.isNotEmpty) {
+          _firestore.collection('chats').doc(chatId).update({
+            'otherUserId': correctOtherUserId,
+          });
+        }
+        
+        if (correctOtherUserId.isEmpty) {
           return SizedBox.shrink();
         }
         return FutureBuilder<DocumentSnapshot>(
-          future: _firestore.collection('users').doc(otherUserId).get(),
+          future: _firestore.collection('users').doc(correctOtherUserId).get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return ListTile(
@@ -563,7 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: CircleAvatar(
                         backgroundColor: Colors.transparent,
                         child: Text(
-                          userData['name'][0].toUpperCase(),
+                          (userData['name'] ?? userData['email']?.split('@')[0] ?? 'U')[0].toUpperCase(),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -603,7 +640,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        userData['name'],
+                        userData['name'] ?? userData['email']?.split('@')[0] ?? 'Unknown User',
                         style: TextStyle(
                           fontWeight: hasUnreadMessages ? FontWeight.bold : FontWeight.normal,
                           color: AppTheme.darkSlate,
@@ -647,6 +684,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _searchUsers(String query) async {
+    // If query is empty, go back to main content
+    if (query.trim().isEmpty) {
+      setState(() {
+        _isSearching = false;
+        _searchResults = [];
+      });
+      return;
+    }
+
     setState(() {
       _isSearching = true;
     });
@@ -657,28 +703,22 @@ class _HomeScreenState extends State<HomeScreen> {
       final currentUserId = _auth.currentUser?.uid;
       
       for (var doc in allUsers.docs) {
-        if (doc.id == currentUserId) continue;
+        if (doc.id == currentUserId) {
+          continue;
+        }
         
         final userData = doc.data();
         
-        // If query is empty, show all users
-        if (query.trim().isEmpty) {
+        // Filter by search query
+        final name = userData['name']?.toString().toLowerCase() ?? '';
+        final email = userData['email']?.toString().toLowerCase() ?? '';
+        final searchQuery = query.toLowerCase();
+        
+        if (name.contains(searchQuery) || email.contains(searchQuery)) {
           results.add({
             'uid': doc.id,
             ...userData,
           });
-        } else {
-          // Filter by search query
-          final name = userData['name']?.toString().toLowerCase() ?? '';
-          final email = userData['email']?.toString().toLowerCase() ?? '';
-          final searchQuery = query.toLowerCase();
-          
-          if (name.contains(searchQuery) || email.contains(searchQuery)) {
-            results.add({
-              'uid': doc.id,
-              ...userData,
-            });
-          }
         }
       }
       
@@ -719,8 +759,12 @@ class _HomeScreenState extends State<HomeScreen> {
         };
         final docRef = await _firestore.collection('chats').add(chatData);
         chatId = docRef.id;
+      } else {
+        // Update existing chat to ensure otherUserId is set correctly
+        await _firestore.collection('chats').doc(chatId).update({
+          'otherUserId': user['uid'],
+        });
       }
-
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -802,19 +846,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Card(
                     margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: ListTile(
-                      onTap: () => _startChat({
-                        'uid': otherUsers[index].id,
-                        ...user,
-                      }),
+                      onTap: () {
+                        final userToPass = {
+                          'uid': otherUsers[index].id,
+                          ...user,
+                        };
+                        _startChat(userToPass);
+                      },
                       leading: CircleAvatar(
                         backgroundColor: Colors.blue,
                         child: Text(
-                          user['name'][0].toUpperCase(),
+                          (user['name'] ?? user['email']?.split('@')[0] ?? 'U')[0].toUpperCase(),
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                       title: Text(
-                        user['name'],
+                        user['name'] ?? user['email']?.split('@')[0] ?? 'Unknown User',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(user['email']),
